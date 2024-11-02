@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Artistic Thesaurus</title>
+    <style>
+      /* Global Styles */
+      body {
+        margin: 0;
+        padding: 20px;
+        min-height: 100vh;
+        background: #111;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+        color: white;
+      }
+
+      #starfield {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      /* Layout Containers */
+      .search-container,
+      .legend {
+        position: fixed;
+        z-index: 1000;
+        background: rgba(30, 30, 30, 0.9);
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .search-container {
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.71);
+      }
+
+      .legend {
+        bottom: 20px;
+        left: 20px;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 14px;
+      }
+
+      /* Legend Items */
+      .legend-item {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+      }
+
+      .legend-color {
+        width: 20px;
+        height: 20px;
+        margin-right: 10px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      /* Input & Button Styles */
+      input {
+        padding: 10px 15px;
+        font-size: 16px;
+        border: 2px solid #333;
+        border-radius: 6px;
+        background: rgba(0, 0, 0, 0.3);
+        color: white;
+        transition: border-color 0.3s;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: #6c63ff;
+      }
+
+      input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #6c63ff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      button:hover {
+        background: #5a52d5;
+        transform: translateY(-2px);
+      }
+
+      /* Word Styling */
+      .word {
+        position: absolute;
+        padding: 10px 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        z-index: 1;
+        backdrop-filter: blur(5px);
+        transition: all 0.3s ease;
+      }
+
+      .word:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        z-index: 1010;
+      }
+
+      /* Word Types */
+      .synonym {
+        background: rgba(144, 238, 144, 0.2); /* Light Green */
+        color: #90ee90;
+        border: 1px solid rgba(144, 238, 144, 0.3);
+      }
+
+      .antonym {
+        background: rgba(255, 105, 97, 0.2); /* Coral */
+        color: #ff6971;
+        border: 1px solid rgba(255, 105, 97, 0.3);
+      }
+
+      .related {
+        background: rgba(135, 206, 235, 0.2); /* Sky Blue */
+        color: #87ceeb;
+        border: 1px solid rgba(135, 206, 235, 0.3);
+      }
+
+      .meaning {
+        background: rgba(255, 223, 186, 0.2); /* Peach */
+        color: #ffdfba;
+        border: 1px solid rgba(255, 223, 186, 0.3);
+      }
+
+      .adjective {
+        background: rgba(147, 112, 219, 0.2); /* Medium Purple */
+        color: #9370db;
+        border: 1px solid rgba(147, 112, 219, 0.3);
+      }
+
+      .noun {
+        background: rgba(255, 215, 0, 0.2); /* Gold */
+        color: #ffd700;
+        border: 1px solid rgba(255, 215, 0, 0.3);
+      }
+
+      /* Original Word Styling */
+      .original {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: rgba(255, 255, 255, 0.3);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        font-size: 48px !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: bold;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        z-index: 1000;
+      }
+
+      /* Word Hover Tooltip */
+      .word::before {
+        content: attr(data-type);
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .word:hover::before {
+        opacity: 1;
+      }
+
+      /* Additional Containers */
+      #results {
+        margin-top: 100px;
+        min-height: calc(100vh - 120px);
+        position: relative;
+      }
+
+      #loadTime {
+        margin-top: 10px;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="starfield"></canvas>
+    <div class="search-container">
+      <input type="text" id="wordInput" placeholder="Enter a word..." />
+      <button onclick="searchWord()">Search</button>
+    </div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(255, 255, 255, 0.3)"></div>
+        <span>Current Word</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(144, 238, 144, 0.2)"></div>
+        <span>Synonyms</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(255, 182, 193, 0.2)"></div>
+        <span>Antonyms</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(173, 216, 230, 0.2)"></div>
+        <span>Related Words</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(255, 223, 186, 0.2)"></div>
+        <span>Meaning-based Words</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(173, 216, 230, 0.2)"></div>
+        <span>Adjectives</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: rgba(144, 238, 144, 0.2)"></div>
+        <span>Nouns</span>
+      </div>
+      <div id="loadTime"></div>
+    </div>
+    <div id="results"></div>
+
+    <script>
+      // Starfield animation
+      const canvas = document.getElementById("starfield");
+      const ctx = canvas.getContext("2d");
+      let stars = [];
+
+      function initStarfield() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        stars = [];
+        for (let i = 0; i < 200; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            z: Math.random() * 2,
+            speed: 0.5 + Math.random() * 1,
+          });
+        }
+      }
+
+      function animateStars() {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        stars.forEach((star) => {
+          ctx.beginPath();
+          const size = star.z * 1.5;
+          const opacity = star.z * 0.5;
+          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+          ctx.arc(star.x, star.y, size, 0, Math.PI * 2);
+          ctx.fill();
+
+          star.y += star.speed;
+          if (star.y > canvas.height) {
+            star.y = 0;
+            star.x = Math.random() * canvas.width;
+          }
+        });
+
+        requestAnimationFrame(animateStars);
+      }
+
+      window.addEventListener("resize", initStarfield);
+      initStarfield();
+      animateStars();
+
+      async function searchWord(clickedWord) {
+        const startTime = new Date();
+        const word = clickedWord || document.getElementById("wordInput").value.trim();
+        if (!word) return;
+
+        try {
+          const [
+            synonymsResponse,
+            antonymsResponse,
+            relatedResponse,
+            meaningResponse,
+            adjectivesResponse,
+            nounsResponse,
+          ] = await Promise.all([
+            fetch(`https://api.datamuse.com/words?rel_syn=${word}`),
+            fetch(`https://api.datamuse.com/words?rel_ant=${word}`),
+            fetch(`https://api.datamuse.com/words?rel_trg=${word}`),
+            fetch(`https://api.datamuse.com/words?ml=${word}&max=10`), // Meaning-based suggestions
+            fetch(`https://api.datamuse.com/words?rel_jjb=${word}&max=5`), // Adjectives for noun
+            fetch(`https://api.datamuse.com/words?rel_jja=${word}&max=5`), // Nouns for adjective
+          ]);
+
+          const synonyms = await synonymsResponse.json();
+          const antonyms = await antonymsResponse.json();
+          const related = await relatedResponse.json();
+          const meanings = await meaningResponse.json();
+          const adjectives = await adjectivesResponse.json();
+          const nouns = await nounsResponse.json();
+
+          const endTime = new Date();
+          const loadTime = (endTime - startTime) / 1000;
+          document.getElementById("loadTime").textContent = `Retrieved in ${loadTime} seconds`;
+
+          // Clear previous results and input
+          document.getElementById("results").innerHTML = "";
+          document.getElementById("wordInput").value = "";
+
+          function createWordElement(word, type, score) {
+            const element = document.createElement("div");
+            element.className = `word ${type}`;
+            element.textContent = word;
+            element.setAttribute("data-type", type);
+            element.onclick = () => searchWord(word);
+
+            const padding = 200;
+            const top = Math.random() * (window.innerHeight - padding * 2) + padding;
+            const left = Math.random() * (window.innerWidth - padding * 2) + padding;
+            const fontSize = Math.min(Math.max((score / 1000) * 20 + 16, 16), 36);
+
+            element.style.top = `${top}px`;
+            element.style.left = `${left}px`;
+            if (type !== "original") element.style.fontSize = `${fontSize}px`;
+
+            return element;
+          }
+
+          // Add original word
+          const originalElement = createWordElement(word, "original", 1000);
+          document.getElementById("results").appendChild(originalElement);
+
+          // Add synonyms, antonyms, related words, meanings, adjectives, and nouns
+          synonyms
+            .slice(0, 15)
+            .forEach((item) =>
+              document.getElementById("results").appendChild(createWordElement(item.word, "synonym", item.score))
+            );
+          antonyms
+            .slice(0, 5)
+            .forEach((item) =>
+              document.getElementById("results").appendChild(createWordElement(item.word, "antonym", item.score))
+            );
+          related
+            .slice(0, 10)
+            .forEach((item) =>
+              document.getElementById("results").appendChild(createWordElement(item.word, "related", item.score))
+            );
+          meanings.forEach((item) =>
+            document.getElementById("results").appendChild(createWordElement(item.word, "meaning", item.score))
+          );
+          adjectives.forEach((item) =>
+            document.getElementById("results").appendChild(createWordElement(item.word, "adjective", item.score))
+          );
+          nouns.forEach((item) =>
+            document.getElementById("results").appendChild(createWordElement(item.word, "noun", item.score))
+          );
+        } catch (error) {
+          console.error("Error:", error);
+          alert("Error fetching results. Please try another word.");
+        }
+      }
+      // Allow Enter key to trigger search
+      document.getElementById("wordInput").addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          searchWord();
+        }
+      });
+    </script>
+  </body>
+</html>
